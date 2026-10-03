@@ -1,18 +1,31 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
+import { CartProvider } from '../context/cart-context';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-
-SplashScreen.preventAutoHideAsync();
-
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <CartProvider>
+      <Stack>
+        <Stack.Screen 
+        name="tabs" 
+        options={{ headerShown: false }} 
+        />
+
+        <Stack.Screen 
+        name="product" 
+        options={{ title: 'Товар', headerBackTitle: 'Назад' }} 
+        />
+
+        <Stack.Screen 
+        name="checkout-success" 
+        options={{ title: '', headerBackTitle: 'Назад' }} 
+        />
+
+        <Stack.Screen 
+        name="checkout-error" 
+        options={{ title: '', headerBackTitle: 'Назад' }} 
+        />
+        
+      </Stack>
+    </CartProvider>
   );
 }
