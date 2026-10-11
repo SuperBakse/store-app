@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import {
   FlatList,
   Image,
@@ -12,21 +11,13 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../context/cart-context';
-import products from '../../data/products';
-
-const FILTERS = [
-  { key: 'new', label: 'Новинки' },
-  { key: 'gaming', label: 'Гейминг' },
-  { key: 'music', label: 'Музыка' },
-];
+import { useCatalog } from '../../context/catalog-context';
+import { resolveProductImage } from '../../data/product-images';
+import { formatPrice } from '../../utils/format-price';
 
 export default function HomeScreen() {
-  const [filter, setFilter] = useState('new');
+  const { tabs, selectedTabId, selectTab, visibleProducts } = useCatalog();
   const { items, addToCart, increment, decrement } = useCart();
-
-  const list = products.filter((p) =>
-    filter === 'new' ? p.isNew : p.category === filter
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,19 +29,19 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chips}
         >
-          {FILTERS.map((f) => (
+          {tabs.map((tab) => (
             <TouchableOpacity
-              key={f.key}
-              style={[styles.chip, filter === f.key && styles.chipActive]}
-              onPress={() => setFilter(f.key)}
+              key={tab.id}
+              style={[styles.chip, selectedTabId === tab.id && styles.chipActive]}
+              onPress={() => selectTab(tab.id)}
             >
               <Text
                 style={[
                   styles.chipText,
-                  filter === f.key && styles.chipTextActive,
+                  selectedTabId === tab.id && styles.chipTextActive,
                 ]}
               >
-                {f.label}
+                {tab.title}
               </Text>
             </TouchableOpacity>
           ))}
@@ -58,7 +49,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={list}
+        data={visibleProducts}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => {
           const cartItem = items.find((i) => i.id === item.id);
@@ -71,7 +62,7 @@ export default function HomeScreen() {
                 router.push({ pathname: '/product', params: { id: item.id } })
               }
             >
-              <Image source={item.image} style={styles.image} />
+              <Image source={resolveProductImage(item.imageUrl)} style={styles.image} />
 
               <View style={styles.info}>
                 <Text style={styles.name}>{item.name}</Text>
@@ -84,7 +75,7 @@ export default function HomeScreen() {
                     style={styles.pricePill}
                     onPress={() => addToCart(item.id)}
                   >
-                    <Text style={styles.priceText}>{item.price} ₽</Text>
+                    <Text style={styles.priceText}>{formatPrice(item.priceInKopecks)}</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={styles.miniQtyRow}>

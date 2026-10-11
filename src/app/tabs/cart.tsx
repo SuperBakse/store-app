@@ -3,20 +3,27 @@ import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCart } from '../../context/cart-context';
-import products from '../../data/products';
+import { useCatalog } from '../../context/catalog-context';
+import { resolveProductImage } from '../../data/product-images';
+import type { Product } from '../../types/product';
+import { formatPrice } from '../../utils/format-price';
 
 export default function CartScreen() {
   const router = useRouter();
   const { items, increment, decrement, remove, clearCart } = useCart();
+  const { products } = useCatalog();
 
   const cartProducts = items
     .map((cartItem) => {
       const product = products.find((p) => p.id === cartItem.id);
       return product ? { ...product, quantity: cartItem.quantity } : null;
     })
-    .filter(Boolean) as (typeof products[number] & { quantity: number })[];
+    .filter(Boolean) as (Product & { quantity: number })[];
 
-  const total = cartProducts.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const total = cartProducts.reduce(
+    (sum, item) => sum + item.priceInKopecks * item.quantity,
+    0
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -34,7 +41,7 @@ export default function CartScreen() {
               <TouchableOpacity
                 onPress={() => router.push({ pathname: '/product', params: { id: item.id } })}
               >
-                <Image source={item.image} style={styles.image} />
+                <Image source={resolveProductImage(item.imageUrl)} style={styles.image} />
               </TouchableOpacity>
 
               <View style={styles.info}>
@@ -45,7 +52,7 @@ export default function CartScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text style={styles.price}>{item.price} ₽</Text>
+                <Text style={styles.price}>{formatPrice(item.priceInKopecks)}</Text>
 
                 <View style={styles.qtyRow}>
                   <TouchableOpacity style={styles.qtyButton} onPress={() => decrement(item.id)}>
@@ -66,7 +73,7 @@ export default function CartScreen() {
         <View style={styles.footer}>
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Итого</Text>
-            <Text style={styles.totalValue}>{total} ₽</Text>
+            <Text style={styles.totalValue}>{formatPrice(total)}</Text>
           </View>
 
           <TouchableOpacity

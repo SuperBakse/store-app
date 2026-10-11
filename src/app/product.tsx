@@ -1,17 +1,16 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useCart } from '../context/cart-context';
-
-import products from '../data/products';
+import { useCatalog } from '../context/catalog-context';
+import { resolveProductImage } from '../data/product-images';
+import { formatPrice } from '../utils/format-price';
 
 export default function ProductScreen() {
   const { id } = useLocalSearchParams();
-
-  const product = products.find(
-    (item) => item.id === Number(id)
-  );
-
+  const { getProductById } = useCatalog();
   const { addToCart } = useCart();
+
+  const product = getProductById(Number(id));
 
   if (!product) {
     return <Text>Товар не найден</Text>;
@@ -28,7 +27,7 @@ export default function ProductScreen() {
 
       <ScrollView style={styles.container}>
         <Image
-          source={product.image }
+          source={resolveProductImage(product.imageUrl)}
           style={styles.image}
         />
 
@@ -37,7 +36,7 @@ export default function ProductScreen() {
         </Text>
 
         <Text style={styles.price}>
-          {product.price} ₽
+          {formatPrice(product.priceInKopecks)}
         </Text>
 
         <Text style={styles.description}>

@@ -1,0 +1,116 @@
+{
+  "categories": [
+    { "id": "gaming", "title": "Гейминг" },
+    { "id": "music", "title": "Музыка" }
+  ],
+  "products": [
+    {
+      "id": 1,
+      "name": "PlayStation 5 Pro",
+      "priceInKopecks": 14999000,
+      "imageUrl": "ps5-pro.png",
+      "description": "Топовая версия консоли с усиленным GPU, поддержкой 4K/120fps и трассировкой лучей.",
+      "category": "gaming",
+      "tags": ["New"]
+    },
+    {
+      "id": 2,
+      "name": "PlayStation 5 Slim",
+      "priceInKopecks": 9499000,
+      "imageUrl": "ps5-slim.png",
+      "description": "Компактная версия консоли девятого поколения с приводом для дисков.",
+      "category": "gaming",
+      "tags": ["New"]
+    },
+    {
+      "id": 3,
+      "name": "GTA 6 (предзаказ)",
+      "priceInKopecks": 999000,
+      "imageUrl": "gta6.png",
+      "description": "Долгожданная часть серии от Rockstar Games, предзаказ цифровой версии.",
+      "category": "gaming",
+      "tags": ["New"]
+    },
+    {
+      "id": 4,
+      "name": "Бас-гитара Höfner 500/1 (Contemporary)",
+      "priceInKopecks": 11290000,
+      "imageUrl": "bass-guitar.png",
+      "description": "4-струнная бас-гитара с активной электроникой и корпусом из красного дерева.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 5,
+      "name": "Комбик для бас-гитары Fender Rumble 40",
+      "priceInKopecks": 4119000,
+      "imageUrl": "comb.png",
+      "description": "Усилитель мощностью 40 Вт с 10-дюймовым динамиком, специально под бас.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 6,
+      "name": "DJ-контроллер Pioneer DDJ-FLX4",
+      "priceInKopecks": 4299000,
+      "imageUrl": "dj-pult.png",
+      "description": "Диджейский пульт с 2 деками, поддержкой rekordbox и Serato DJ Lite.",
+      "category": "music",
+      "tags": ["New"]
+    },
+    {
+      "id": 7,
+      "name": "Синтезатор Korg Minilogue",
+      "priceInKopecks": 7299000,
+      "imageUrl": "synth.png",
+      "description": "4-голосный аналоговый синтезатор с полифонией и встроенным секвенсором.",
+      "category": "music",
+      "tags": ["New"]
+    },
+    {
+      "id": 8,
+      "name": "Электропианино Yamaha P-145",
+      "priceInKopecks": 5899000,
+      "imageUrl": "piano.png",
+      "description": "Компактное цифровое пианино с 88 взвешенными клавишами и реалистичным звуком.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 9,
+      "name": "Струны Elixir Nanoweb для бас-гитары",
+      "priceInKopecks": 1049000,
+      "imageUrl": "strings.png",
+      "description": "Комплект струн с полимерным покрытием для долгого срока службы и яркого звука.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 10,
+      "name": "Студийные наушники Audio-Technica ATH-M50x",
+      "priceInKopecks": 2099000,
+      "imageUrl": "headphones.png",
+      "description": "Закрытые мониторные наушники с точным звуком, стандарт для звукорежиссёров.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 11,
+      "name": "Аудиоинтерфейс Focusrite Scarlett 2i2",
+      "priceInKopecks": 1699000,
+      "imageUrl": "interface.png",
+      "description": "2-канальная звуковая карта для записи гитары, баса и вокала с минимальной задержкой.",
+      "category": "music",
+      "tags": []
+    },
+    {
+      "id": 12,
+      "name": "Чехол для бас-гитары Fender FB405 (gig bag)",
+      "priceInKopecks": 649000,
+      "imageUrl": "gig-bag.png",
+      "description": "Мягкий чехол с утеплителем и накладными карманами для аксессуаров.",
+      "category": "music",
+      "tags": []
+    }
+  ]
+}
