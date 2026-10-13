@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import {
   FlatList,
   Image,
@@ -12,11 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCart } from '../../context/cart-context';
 import { useCatalog } from '../../context/catalog-context';
-import { resolveProductImage } from '../../data/product-images';
 import { formatPrice } from '../../utils/format-price';
 
 export default function HomeScreen() {
-  const { tabs, selectedTabId, selectTab, visibleProducts } = useCatalog();
+  const { tabs, selectedTabId, selectTab, visibleProducts, openProduct } = useCatalog();
   const { items, addToCart, increment, decrement } = useCart();
 
   return (
@@ -50,7 +48,7 @@ export default function HomeScreen() {
 
       <FlatList
         data={visibleProducts}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           const cartItem = items.find((i) => i.id === item.id);
           const quantity = cartItem?.quantity ?? 0;
@@ -58,16 +56,14 @@ export default function HomeScreen() {
           return (
             <TouchableOpacity
               style={styles.row}
-              onPress={() =>
-                router.push({ pathname: '/product', params: { id: item.id } })
-              }
+              onPress={() => openProduct(item.id)}
             >
-              <Image source={resolveProductImage(item.imageUrl)} style={styles.image} />
+              <Image source={{ uri: item.imageUrl }} style={styles.image} />
 
               <View style={styles.info}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.description} numberOfLines={2}>
-                  {item.description}
+                  {item.shortDescription}
                 </Text>
 
                 {quantity === 0 ? (
@@ -117,7 +113,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 14, color: '#333' },
   chipTextActive: { color: '#fff' },
   row: { flexDirection: 'row', paddingVertical: 12, gap: 12 },
-  image: { width: 90, height: 100, resizeMode: 'contain' },
+  image: { width: 90, height: 100, borderRadius: 8, resizeMode: 'cover', backgroundColor: '#F5F5F5' },
   info: { flex: 1 },
   name: { fontSize: 16, fontWeight: 'bold' },
   description: { fontSize: 13, color: '#7A7A7A', marginTop: 4 },

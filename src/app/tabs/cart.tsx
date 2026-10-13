@@ -4,18 +4,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCart } from '../../context/cart-context';
 import { useCatalog } from '../../context/catalog-context';
-import { resolveProductImage } from '../../data/product-images';
 import type { Product } from '../../types/product';
 import { formatPrice } from '../../utils/format-price';
 
 export default function CartScreen() {
   const router = useRouter();
   const { items, increment, decrement, remove, clearCart } = useCart();
-  const { products } = useCatalog();
+  const { getProductById, openProduct } = useCatalog();
 
   const cartProducts = items
     .map((cartItem) => {
-      const product = products.find((p) => p.id === cartItem.id);
+      const product = getProductById(cartItem.id);
       return product ? { ...product, quantity: cartItem.quantity } : null;
     })
     .filter(Boolean) as (Product & { quantity: number })[];
@@ -34,14 +33,12 @@ export default function CartScreen() {
       ) : (
         <FlatList
           data={cartProducts}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 16 }}
           renderItem={({ item }) => (
             <View style={styles.card}>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: '/product', params: { id: item.id } })}
-              >
-                <Image source={resolveProductImage(item.imageUrl)} style={styles.image} />
+              <TouchableOpacity onPress={() => openProduct(item.id)}>
+                <Image source={{ uri: item.imageUrl }} style={styles.image} />
               </TouchableOpacity>
 
               <View style={styles.info}>
@@ -107,7 +104,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 12,
-    resizeMode: 'contain',
+    resizeMode: 'cover',
     backgroundColor: '#F5F5F5',
   },
   info: { flex: 1 },

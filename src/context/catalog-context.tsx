@@ -12,7 +12,12 @@ type CatalogContextType = {
   selectedTabId: string;
   selectTab: (id: string) => void;
   visibleProducts: Product[];
-  getProductById: (id: number) => Product | undefined;
+  getProductById: (id: string) => Product | undefined;
+  // Какой товар открыт в bottom sheet (null — sheet закрыт).
+  // Живёт здесь, выше списка, поэтому sheet один на всё приложение.
+  selectedProduct: Product | null;
+  openProduct: (id: string) => void;
+  closeProduct: () => void;
 };
 
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined);
@@ -20,12 +25,13 @@ const CatalogContext = createContext<CatalogContextType | undefined>(undefined);
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const [catalog] = useState(() => loadCatalog());
   const [selectedTabId, setSelectedTabId] = useState<string>(NEW_TAB_ID);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
 
   // «Новинки» собираются на клиенте и всегда стоят первым табом
   const tabs = useMemo<CatalogTab[]>(
     () => [
       { id: NEW_TAB_ID, title: 'Новинки' },
-      ...catalog.categories.map((c) => ({ id: c.id, title: c.title })),
+      ...catalog.categories.map((c) => ({ id: c.id, title: c.name })),
     ],
     [catalog]
   );
@@ -33,21 +39,25 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const visibleProducts = useMemo(
     () =>
       selectedTabId === NEW_TAB_ID
-        ? catalog.products.filter((p) => p.tags.includes(NEW_TAG))
-        : catalog.products.filter((p) => p.category === selectedTabId),
+        ? catalog.items.filter((p) => p.tags.includes(NEW_TAG))
+        : catalog.items.filter((p) => p.categoryId === selectedTabId),
     [catalog, selectedTabId]
   );
 
   const value = useMemo<CatalogContextType>(
     () => ({
-      products: catalog.products,
+      products: catalog.items,
       tabs,
       selectedTabId,
       selectTab: setSelectedTabId,
       visibleProducts,
-      getProductById: (id: number) => catalog.products.find((p) => p.id === id),
+      getProductById: (id: string) => catalog.items.find((p) => p.id === id),
+      selectedProduct:
+        catalog.items.find((p) => p.id === selectedProductId) ?? null,
+      openProduct: setSelectedProductId,
+      closeProduct: () => setSelectedProductId(null),
     }),
-    [catalog, tabs, selectedTabId, visibleProducts]
+    [catalog, tabs, selectedTabId, visibleProducts, selectedProductId]
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
