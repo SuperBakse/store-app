@@ -18,15 +18,26 @@ import { useCatalog } from '../context/catalog-context';
 import type { Product } from '../types/product';
 import { formatPrice } from '../utils/format-price';
 
+const ACCENT = '#1F6FEB';
+const ACCENT_LIGHT = '#EAF2FF';
+const GREY_TEXT = '#7A7A7A';
+
 const TAG_LABELS: Record<string, string> = {
-  New: 'Новинка',
-  Popular: 'Популярное',
-  Sale: 'Скидка',
+  New: 'NEW',
+  Popular: 'ХИТ',
+  Sale: 'SALE',
 };
 
 // Внешняя часть: показывает Modal, пока в каталоге выбран товар.
 export function ProductSheet() {
   const { selectedProduct, closeProduct } = useCatalog();
+  // Попап (i) живёт здесь, чтобы кнопка «назад» на Android сначала закрывала его
+  const [infoOpen, setInfoOpen] = useState(false);
+
+  const handleClosed = () => {
+    setInfoOpen(false);
+    closeProduct();
+  };
 
   return (
     <Modal
@@ -34,28 +45,41 @@ export function ProductSheet() {
       transparent
       animationType="none"
       statusBarTranslucent
-      onRequestClose={closeProduct}
+      onRequestClose={() => (infoOpen ? setInfoOpen(false) : handleClosed())}
     >
       {selectedProduct && (
         <SheetBody
           key={selectedProduct.id}
           product={selectedProduct}
-          onClosed={closeProduct}
+          onClosed={handleClosed}
+          infoOpen={infoOpen}
+          setInfoOpen={setInfoOpen}
         />
       )}
     </Modal>
   );
 }
 
-function SheetBody({ product, onClosed }: { product: Product; onClosed: () => void }) {
+type SheetBodyProps = {
+  product: Product;
+  onClosed: () => void;
+  infoOpen: boolean;
+  setInfoOpen: (open: boolean) => void;
+};
+
+function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps) {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { items, addToCart } = useCart();
+  const { addToCart } = useCart();
+
+  // По умолчанию выбран первый размер (как в макете); для другого товара
+  // sheet создаётся заново (key), поэтому выбор сбрасывается сам.
+  const [selectedSizeId, setSelectedSizeId] = useState<string | null>(
+    product.sizes[0]?.id ?? null
+  );
 
   // 0 — sheet открыт, windowHeight — уехал за нижний край экрана
   const [translateY] = useState(() => new Animated.Value(windowHeight));
-
-  const quantity = items.find((i) => i.id === product.id)?.quantity ?? 0;
 
   const animateTo = (toValue: number, done?: () => void) => {
     Animated.timing(translateY, {
@@ -73,7 +97,7 @@ function SheetBody({ product, onClosed }: { product: Product; onClosed: () => vo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Закрытие (крестик, затемнение, кнопка «назад», свайп): уезжает вниз и только потом размонтируется
+  // Закрытие (крестик, затемнение, свайп): уезжает вниз и только потом размонтируется
   const close = () => animateTo(windowHeight, onClosed);
 
   // Свайп вниз за шапку (ручка + картинка)
@@ -117,6 +141,13 @@ function SheetBody({ product, onClosed }: { product: Product; onClosed: () => vo
     extrapolate: 'clamp',
   });
 
+  const specs = [
+    { label: 'Материал', value: product.material },
+    { label: 'Вес', value: product.weight },
+    { label: 'Сезон', value: product.season },
+    { label: 'Страна производства', value: product.countryOfOrigin },
+  ];
+
   return (
     <View style={styles.root}>
       {/* Затемнение: тап закрывает */}
@@ -132,52 +163,111 @@ function SheetBody({ product, onClosed }: { product: Product; onClosed: () => vo
           { maxHeight: windowHeight * 0.9, transform: [{ translateY }] },
         ]}
       >
+        {/* Шапка (ручка + картинка) вне ScrollView: на Android ScrollView
+            перехватывает жест, и свайп вниз за шапку тогда не работал */}
+        <View {...panResponder.panHandlers}>
+          <View style={styles.handleArea}>
+            <View style={styles.handle} />
+          </View>
+
+          <View style={styles.imageWrap}>
+            <Image source={{ uri: product.imageUrl }} style={styles.image} />
+
+            {/* Бейджи тегов, левый верхний угол */}
+            <View style={styles.tags}>
+              {product.tags.map((tag) => (
+                <View key={tag} style={styles.tagChip}>
+                  <Text style={styles.tagText}>{TAG_LABELS[tag] ?? tag}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Крестик, правый верхний угол */}
+            <Pressable style={styles.closeButton} onPress={close} hitSlop={8}>
+              <Text style={styles.closeText}>✕</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Прокручивается только текст */}
         <ScrollView
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
           bounces={false}
         >
-          {/* Шапка: ручка + картинка, за неё тянем sheet вниз */}
-          <View {...panResponder.panHandlers}>
-            <View style={styles.handleArea}>
-              <View style={styles.handle} />
-            </View>
-
-            <View style={styles.imageWrap}>
-              <Image source={{ uri: product.imageUrl }} style={styles.image} />
-
-              {/* Теги чипами поверх картинки, левый верхний угол */}
-              <View style={styles.tags}>
-                {product.tags.map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagText}>{TAG_LABELS[tag] ?? tag}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Крестик, правый верхний угол */}
-              <Pressable style={styles.closeButton} onPress={close} hitSlop={8}>
-                <Text style={styles.closeText}>✕</Text>
+          <View style={styles.content}>
+            {/* Название + кнопка (i) в одной строке */}
+            <View style={styles.titleRow}>
+              <Text style={styles.name}>{product.name}</Text>
+              <Pressable
+                style={styles.infoButton}
+                onPress={() => setInfoOpen(true)}
+                hitSlop={8}
+                accessibilityLabel="Характеристики товара"
+              >
+                <Text style={styles.infoButtonText}>i</Text>
               </Pressable>
             </View>
-          </View>
 
-          <View style={styles.content}>
-            <Text style={styles.name}>{product.name}</Text>
-            <Text style={styles.price}>{formatPrice(product.priceInKopecks)}</Text>
             <Text style={styles.description}>{product.longDescription}</Text>
           </View>
         </ScrollView>
 
-        {/* Закреплено внизу */}
+        {/* Закреплено внизу: размеры + кнопка */}
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Pressable style={styles.cartButton} onPress={() => addToCart(product.id)}>
+          {product.sizes.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.sizes}
+              style={styles.sizesScroll}
+            >
+              {product.sizes.map((size) => {
+                const active = size.id === selectedSizeId;
+                return (
+                  <Pressable
+                    key={size.id}
+                    style={[styles.sizeChip, active && styles.sizeChipActive]}
+                    onPress={() => setSelectedSizeId(size.id)}
+                  >
+                    <Text style={[styles.sizeText, active && styles.sizeTextActive]}>
+                      {size.name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          <Pressable style={styles.cartButton} onPress={() => addToCart(product.id, selectedSizeId)}>
             <Text style={styles.cartButtonText}>
-              {quantity > 0 ? `В корзину (уже в корзине: ${quantity})` : 'В корзину'}
+              {`В корзину · ${formatPrice(product.priceInKopecks)}`}
             </Text>
           </Pressable>
         </View>
       </Animated.View>
+
+      {/* Попап характеристик: обычный оверлей поверх sheet, без второго Modal */}
+      {infoOpen && (
+        <View style={[StyleSheet.absoluteFill, styles.infoOverlay]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setInfoOpen(false)} />
+
+          <View style={styles.infoCard}>
+            <Text style={styles.infoTitle}>Характеристики</Text>
+
+            {specs.map((spec) => (
+              <View key={spec.label} style={styles.specRow}>
+                <Text style={styles.specLabel}>{spec.label}</Text>
+                <Text style={styles.specValue}>{spec.value || '—'}</Text>
+              </View>
+            ))}
+
+            <Pressable style={styles.infoClose} onPress={() => setInfoOpen(false)}>
+              <Text style={styles.infoCloseText}>Закрыть</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -188,34 +278,40 @@ const styles = StyleSheet.create({
 
   sheet: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     overflow: 'hidden',
   },
   scroll: { flexShrink: 1 },
 
-  handleArea: { alignItems: 'center', paddingVertical: 10, backgroundColor: '#fff' },
+  handleArea: { alignItems: 'center', paddingVertical: 14, backgroundColor: '#fff' },
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D0D0D0' },
 
-  imageWrap: { width: '100%', height: 300, backgroundColor: '#F5F5F5' },
+  imageWrap: {
+    height: 260,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F5F5F5',
+  },
   image: { width: '100%', height: '100%', resizeMode: 'cover' },
 
   tags: {
     position: 'absolute',
     top: 12,
     left: 12,
-    right: 60,
+    right: 56,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
   },
   tagChip: {
-    backgroundColor: '#1F6FEB',
-    borderRadius: 12,
+    backgroundColor: ACCENT,
+    borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  tagText: { color: '#fff', fontSize: 12, fontWeight: '600' },
+  tagText: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 
   closeButton: {
     position: 'absolute',
@@ -230,23 +326,77 @@ const styles = StyleSheet.create({
   },
   closeText: { fontSize: 16, color: '#333', fontWeight: 'bold' },
 
-  content: { padding: 20 },
-  name: { fontSize: 22, fontWeight: 'bold' },
-  price: { fontSize: 22, fontWeight: 'bold', color: '#1F6FEB', marginTop: 8 },
-  description: { fontSize: 15, lineHeight: 22, color: '#7A7A7A', marginTop: 12 },
+  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  name: { flex: 1, fontSize: 22, fontWeight: 'bold' },
+  infoButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: ACCENT_LIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoButtonText: { fontSize: 15, fontWeight: 'bold', color: ACCENT },
+  description: { fontSize: 15, lineHeight: 22, color: GREY_TEXT, marginTop: 10 },
 
   footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
+    paddingTop: 14,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
     backgroundColor: '#fff',
   },
+  sizesScroll: { flexGrow: 0, marginBottom: 14 },
+  sizes: { paddingHorizontal: 20, gap: 8 },
+  sizeChip: {
+    minWidth: 48,
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sizeChipActive: { backgroundColor: ACCENT },
+  sizeText: { fontSize: 14, color: '#333' },
+  sizeTextActive: { color: '#fff', fontWeight: '600' },
+
   cartButton: {
-    backgroundColor: '#1F6FEB',
-    borderRadius: 10,
-    paddingVertical: 14,
+    marginHorizontal: 20,
+    backgroundColor: ACCENT,
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: 'center',
   },
   cartButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+
+  infoOverlay: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  infoCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+  },
+  infoTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+  specRow: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  specLabel: { fontSize: 13, color: GREY_TEXT },
+  specValue: { fontSize: 15, marginTop: 2 },
+  infoClose: {
+    marginTop: 16,
+    backgroundColor: ACCENT_LIGHT,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  infoCloseText: { fontSize: 16, fontWeight: '600', color: ACCENT },
 });

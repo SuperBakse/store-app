@@ -1,12 +1,29 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import {
+  createContext,
+  ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { loadCatalog } from '../data/catalog-repository';
-import type { CatalogTab, Product } from '../types/product';
+import type { CatalogData, CatalogTab, Product } from '../types/product';
 
 export const NEW_TAB_ID = 'new';
 const NEW_TAG = 'New';
 
+export type CatalogStatus = 'loading' | 'error' | 'ready';
+
+const EMPTY_CATALOG: CatalogData = { categories: [], items: [] };
+
 type CatalogContextType = {
+  // Состояние загрузки каталога из API
+  status: CatalogStatus;
+  errorMessage: string;
+  reload: () => void;
+
   products: Product[];
   tabs: CatalogTab[];
   selectedTabId: string;
@@ -23,9 +40,36 @@ type CatalogContextType = {
 const CatalogContext = createContext<CatalogContextType | undefined>(undefined);
 
 export function CatalogProvider({ children }: { children: ReactNode }) {
-  const [catalog] = useState(() => loadCatalog());
+  const [catalog, setCatalog] = useState<CatalogData>(EMPTY_CATALOG);
+  const [status, setStatus] = useState<CatalogStatus>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
+  // Каждое «Повторить» увеличивает счётчик и запускает загрузку заново
+  const [attempt, setAttempt] = useState(0);
   const [selectedTabId, setSelectedTabId] = useState<string>(NEW_TAB_ID);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    loadCatalog(controller.signal)
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        setCatalog(data);
+        setStatus('ready');
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted) return;
+        setErrorMessage(e instanceof Error ? e.message : 'Неизвестная ошибка');
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [attempt]);
+
+  const reload = useCallback(() => {
+    setStatus('loading');
+    setAttempt((n) => n + 1);
+  }, []);
 
   // «Новинки» собираются на клиенте и всегда стоят первым табом
   const tabs = useMemo<CatalogTab[]>(
@@ -46,6 +90,9 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CatalogContextType>(
     () => ({
+      status,
+      errorMessage,
+      reload,
       products: catalog.items,
       tabs,
       selectedTabId,
@@ -57,7 +104,16 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
       openProduct: setSelectedProductId,
       closeProduct: () => setSelectedProductId(null),
     }),
-    [catalog, tabs, selectedTabId, visibleProducts, selectedProductId]
+    [
+      status,
+      errorMessage,
+      reload,
+      catalog,
+      tabs,
+      selectedTabId,
+      visibleProducts,
+      selectedProductId,
+    ]
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

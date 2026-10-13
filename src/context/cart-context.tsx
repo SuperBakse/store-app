@@ -1,49 +1,54 @@
 import { createContext, ReactNode, useContext, useState } from 'react';
 
-type CartItem = { id: string; quantity: number };
+// Позиция корзины = товар + выбранный размер.
+// key уникален для пары (товар, размер): тот же товар в другом размере — отдельная строка.
+type CartItem = { key: string; id: string; sizeId: string | null; quantity: number };
 
 type CartContextType = {
   items: CartItem[];
-  addToCart: (id: string) => void;
-  increment: (id: string) => void;
-  decrement: (id: string) => void;
-  remove: (id: string) => void;
+  addToCart: (id: string, sizeId: string | null) => void;
+  increment: (key: string) => void;
+  decrement: (key: string) => void;
+  remove: (key: string) => void;
   clearCart: () => void;
 };
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
+const makeKey = (id: string, sizeId: string | null) => `${id}:${sizeId ?? ''}`;
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = (id: string) => {
+  const addToCart = (id: string, sizeId: string | null) => {
+    const key = makeKey(id, sizeId);
     setItems((prev) => {
-      const existing = prev.find((i) => i.id === id);
+      const existing = prev.find((i) => i.key === key);
       if (existing) {
         return prev.map((i) =>
-          i.id === id ? { ...i, quantity: i.quantity + 1 } : i
+          i.key === key ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [...prev, { id, quantity: 1 }];
+      return [...prev, { key, id, sizeId, quantity: 1 }];
     });
   };
 
-  const increment = (id: string) => {
+  const increment = (key: string) => {
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity: i.quantity + 1 } : i))
+      prev.map((i) => (i.key === key ? { ...i, quantity: i.quantity + 1 } : i))
     );
   };
 
-  const decrement = (id: string) => {
+  const decrement = (key: string) => {
     setItems((prev) =>
       prev
-        .map((i) => (i.id === id ? { ...i, quantity: i.quantity - 1 } : i))
+        .map((i) => (i.key === key ? { ...i, quantity: i.quantity - 1 } : i))
         .filter((i) => i.quantity > 0)
     );
   };
 
-  const remove = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+  const remove = (key: string) => {
+    setItems((prev) => prev.filter((i) => i.key !== key));
   };
 
   const clearCart = () => {

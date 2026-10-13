@@ -15,9 +15,11 @@ export default function CartScreen() {
   const cartProducts = items
     .map((cartItem) => {
       const product = getProductById(cartItem.id);
-      return product ? { ...product, quantity: cartItem.quantity } : null;
+      if (!product) return null;
+      const sizeName = product.sizes.find((sz) => sz.id === cartItem.sizeId)?.name ?? null;
+      return { ...product, key: cartItem.key, sizeName, quantity: cartItem.quantity };
     })
-    .filter(Boolean) as (Product & { quantity: number })[];
+    .filter(Boolean) as (Product & { key: string; sizeName: string | null; quantity: number })[];
 
   const total = cartProducts.reduce(
     (sum, item) => sum + item.priceInKopecks * item.quantity,
@@ -33,7 +35,7 @@ export default function CartScreen() {
       ) : (
         <FlatList
           data={cartProducts}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={{ paddingBottom: 16 }}
           renderItem={({ item }) => (
             <View style={styles.card}>
@@ -44,19 +46,23 @@ export default function CartScreen() {
               <View style={styles.info}>
                 <View style={styles.headerRow}>
                   <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-                  <TouchableOpacity onPress={() => remove(item.id)}>
+                  <TouchableOpacity onPress={() => remove(item.key)}>
                     <Text style={styles.removeText}>✕</Text>
                   </TouchableOpacity>
                 </View>
 
+                {item.sizeName && (
+                  <Text style={styles.size}>Размер: {item.sizeName}</Text>
+                )}
+
                 <Text style={styles.price}>{formatPrice(item.priceInKopecks)}</Text>
 
                 <View style={styles.qtyRow}>
-                  <TouchableOpacity style={styles.qtyButton} onPress={() => decrement(item.id)}>
+                  <TouchableOpacity style={styles.qtyButton} onPress={() => decrement(item.key)}>
                     <Text style={styles.qtyButtonText}>−</Text>
                   </TouchableOpacity>
                   <Text style={styles.qtyText}>{item.quantity}</Text>
-                  <TouchableOpacity style={styles.qtyButton} onPress={() => increment(item.id)}>
+                  <TouchableOpacity style={styles.qtyButton} onPress={() => increment(item.key)}>
                     <Text style={styles.qtyButtonText}>+</Text>
                   </TouchableOpacity>
                 </View>
@@ -117,6 +123,7 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: 'bold', flex: 1, marginRight: 8 },
   removeText: { fontSize: 16, color: '#B0B0B0' },
 
+  size: { fontSize: 13, color: '#7A7A7A', marginTop: 2 },
   price: { fontSize: 15, fontWeight: 'bold', marginTop: 4 },
 
   qtyRow: {

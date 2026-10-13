@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   ScrollView,
@@ -9,13 +10,46 @@ import {
 } from 'react-native';
 
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCart } from '../../context/cart-context';
 import { useCatalog } from '../../context/catalog-context';
 import { formatPrice } from '../../utils/format-price';
 
 export default function HomeScreen() {
-  const { tabs, selectedTabId, selectTab, visibleProducts, openProduct } = useCatalog();
-  const { items, addToCart, increment, decrement } = useCart();
+  const {
+    status,
+    errorMessage,
+    reload,
+    tabs,
+    selectedTabId,
+    selectTab,
+    visibleProducts,
+    openProduct,
+  } = useCatalog();
+
+  if (status === 'loading') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Каталог товаров</Text>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#1F6FEB" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (status === 'error') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.title}>Каталог товаров</Text>
+        <View style={styles.center}>
+          <Text style={styles.stateTitle}>Не удалось загрузить каталог</Text>
+          <Text style={styles.stateText}>{errorMessage}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={reload}>
+            <Text style={styles.retryButtonText}>Повторить</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,51 +83,26 @@ export default function HomeScreen() {
       <FlatList
         data={visibleProducts}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const cartItem = items.find((i) => i.id === item.id);
-          const quantity = cartItem?.quantity ?? 0;
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>В этой категории пока нет товаров</Text>
+        }
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.row} onPress={() => openProduct(item.id)}>
+            <Image source={{ uri: item.imageUrl }} style={styles.image} />
 
-          return (
-            <TouchableOpacity
-              style={styles.row}
-              onPress={() => openProduct(item.id)}
-            >
-              <Image source={{ uri: item.imageUrl }} style={styles.image} />
+            <View style={styles.info}>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.description} numberOfLines={2}>
+                {item.shortDescription}
+              </Text>
 
-              <View style={styles.info}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.description} numberOfLines={2}>
-                  {item.shortDescription}
-                </Text>
-
-                {quantity === 0 ? (
-                  <TouchableOpacity
-                    style={styles.pricePill}
-                    onPress={() => addToCart(item.id)}
-                  >
-                    <Text style={styles.priceText}>{formatPrice(item.priceInKopecks)}</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <View style={styles.miniQtyRow}>
-                    <TouchableOpacity
-                      style={styles.miniQtyButton}
-                      onPress={() => decrement(item.id)}
-                    >
-                      <Text style={styles.miniQtyButtonText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.miniQtyText}>{quantity}</Text>
-                    <TouchableOpacity
-                      style={styles.miniQtyButton}
-                      onPress={() => increment(item.id)}
-                    >
-                      <Text style={styles.miniQtyButtonText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+              {/* Цена — просто подпись; добавление в корзину только из карточки товара */}
+              <View style={styles.pricePill}>
+                <Text style={styles.priceText}>{formatPrice(item.priceInKopecks)}</Text>
               </View>
-            </TouchableOpacity>
-          );
-        }}
+            </View>
+          </TouchableOpacity>
+        )}
       />
     </SafeAreaView>
   );
@@ -102,6 +111,18 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 15, backgroundColor: '#fff' },
   title: { fontSize: 28, fontWeight: 'bold', marginBottom: 5 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  stateTitle: { fontSize: 18, fontWeight: 'bold', textAlign: 'center' },
+  stateText: { fontSize: 14, color: '#7A7A7A', textAlign: 'center', marginTop: 8 },
+  retryButton: {
+    backgroundColor: '#1F6FEB',
+    borderRadius: 10,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    marginTop: 20,
+  },
+  retryButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  emptyText: { fontSize: 15, color: '#7A7A7A', textAlign: 'center', marginTop: 40 },
   chips: { paddingVertical: 12, gap: 8 },
   chip: {
     backgroundColor: '#F2F2F2',
@@ -126,18 +147,4 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   priceText: { fontSize: 14, fontWeight: '600', color: '#1F6FEB' },
-  miniQtyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    alignSelf: 'flex-start',
-    backgroundColor: '#EAF2FF',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginTop: 8,
-  },
-  miniQtyButton: { width: 16, alignItems: 'center' },
-  miniQtyButtonText: { fontSize: 15, fontWeight: 'bold', color: '#1F6FEB' },
-  miniQtyText: { fontSize: 13, fontWeight: '600', minWidth: 14, textAlign: 'center' },
 });
