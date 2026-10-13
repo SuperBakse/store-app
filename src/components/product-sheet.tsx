@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Image,
   Modal,
-  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +10,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCart } from '../context/cart-context';
@@ -81,6 +85,18 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
   // 0 — sheet открыт, windowHeight — уехал за нижний край экрана
   const [translateY] = useState(() => new Animated.Value(windowHeight));
 
+  // Актуальный onClosed для жеста: колбэк жеста читает его из ref
+  const onClosedRef = useRef(onClosed);
+  useEffect(() => {
+    onClosedRef.current = onClosed;
+  });
+
+  // Следим, помещается ли текст: если да, прокрутка выключена и не мешает жесту
+  const viewHeight = useRef(0);
+  const contentHeight = useRef(0);
+  const [scrollable, setScrollable] = useState(false);
+  const updateScrollable = () => setScrollable(contentHeight.current > viewHeight.current + 1);
+
   const animateTo = (toValue: number, done?: () => void) => {
     Animated.timing(translateY, {
       toValue,
@@ -100,40 +116,37 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
   // Закрытие (крестик, затемнение, свайп): уезжает вниз и только потом размонтируется
   const close = () => animateTo(windowHeight, onClosed);
 
-  // Свайп вниз за шапку (ручка + картинка)
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_e, g) =>
-          g.dy > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-        onPanResponderMove: (_e, g) => {
-          if (g.dy > 0) translateY.setValue(g.dy);
-        },
-        onPanResponderRelease: (_e, g) => {
-          if (g.dy > 120 || g.vy > 0.8) {
-            Animated.timing(translateY, {
-              toValue: windowHeight,
-              duration: 200,
-              useNativeDriver: true,
-            }).start(({ finished }) => {
-              if (finished) onClosed();
-            });
-          } else {
-            Animated.spring(translateY, {
-              toValue: 0,
-              useNativeDriver: true,
-            }).start();
-          }
-        },
-        onPanResponderTerminate: () => {
-          Animated.spring(translateY, {
-            toValue: 0,
+  // Свайп вниз через react-native-gesture-handler: жест распознаётся на уровне
+  // Android и не зависит от JS-системы касаний (старый PanResponder в Modal не получал
+  // движение пальца). Колбэки выполняются в JS (runOnJS), анимация та же.
+  const makePan = (enabled: boolean) =>
+    Gesture.Pan()
+      .runOnJS(true)
+      .enabled(enabled)
+      .activeOffsetY(10) // начинаем, когда палец ушёл вниз на 10 px
+      .failOffsetX([-30, 30]) // горизонтальный жест — не наш
+      .onUpdate((e) => {
+        if (e.translationY > 0) translateY.setValue(e.translationY);
+      })
+      .onEnd((e, success) => {
+        if (success && (e.translationY > 120 || e.velocityY > 800)) {
+          Animated.timing(translateY, {
+            toValue: windowHeight,
+            duration: 200,
             useNativeDriver: true,
-          }).start();
-        },
-      }),
-    [translateY, windowHeight, onClosed]
-  );
+          }).start(({ finished }) => {
+            if (finished) onClosedRef.current();
+          });
+        } else {
+          Animated.spring(translateY, { toValue: 0, useNativeDriver: true }).start();
+        }
+      });
+
+  // Текст короткий: тянуть можно за любое место карточки.
+  // Текст длинный (прокручивается): тянуть можно только за ручку и картинку,
+  // чтобы не мешать прокрутке текста.
+  const sheetPan = makePan(!scrollable);
+  const headerPan = makePan(scrollable);
 
   const backdropOpacity = translateY.interpolate({
     inputRange: [0, windowHeight],
@@ -149,7 +162,7 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
   ];
 
   return (
-    <View style={styles.root}>
+    <GestureHandlerRootView style={styles.root}>
       {/* Затемнение: тап закрывает */}
       <Animated.View
         style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: backdropOpacity }]}
@@ -157,15 +170,16 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
         <Pressable style={StyleSheet.absoluteFill} onPress={close} />
       </Animated.View>
 
+      <GestureDetector gesture={sheetPan}>
       <Animated.View
         style={[
           styles.sheet,
           { maxHeight: windowHeight * 0.9, transform: [{ translateY }] },
         ]}
       >
-        {/* Шапка (ручка + картинка) вне ScrollView: на Android ScrollView
-            перехватывает жест, и свайп вниз за шапку тогда не работал */}
-        <View {...panResponder.panHandlers}>
+        {/* Шапка: ручка + картинка */}
+        <GestureDetector gesture={headerPan}>
+        <View>
           <View style={styles.handleArea}>
             <View style={styles.handle} />
           </View>
@@ -188,12 +202,23 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
             </Pressable>
           </View>
         </View>
+        </GestureDetector>
 
-        {/* Прокручивается только текст */}
+        {/* Прокрутка включается, только если текст не помещается: иначе
+            ScrollView на Android перехватывает жест и мешает свайпу */}
         <ScrollView
           style={styles.scroll}
           showsVerticalScrollIndicator={false}
           bounces={false}
+          scrollEnabled={scrollable}
+          onLayout={(e) => {
+            viewHeight.current = e.nativeEvent.layout.height;
+            updateScrollable();
+          }}
+          onContentSizeChange={(_w, h) => {
+            contentHeight.current = h;
+            updateScrollable();
+          }}
         >
           <View style={styles.content}>
             {/* Название + кнопка (i) в одной строке */}
@@ -246,6 +271,7 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
           </Pressable>
         </View>
       </Animated.View>
+      </GestureDetector>
 
       {/* Попап характеристик: обычный оверлей поверх sheet, без второго Modal */}
       {infoOpen && (
@@ -268,7 +294,7 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
           </View>
         </View>
       )}
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
