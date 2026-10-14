@@ -2,10 +2,13 @@ import { NativeTabs } from 'expo-router/unstable-native-tabs';
 import { useColorScheme } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useCart } from '../context/cart-context';
 
 export default function AppTabs() {
   const scheme = useColorScheme();
   const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  // Бейдж: сумма quantity по всем позициям корзины
+  const { count } = useCart();
 
   return (
     <NativeTabs
@@ -28,13 +31,14 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger> */}
 
-    <NativeTabs.Trigger name="cart">
-      <NativeTabs.Trigger.Label>Корзина</NativeTabs.Trigger.Label>
-      <NativeTabs.Trigger.Icon
-        src={require('@/assets/images/tabIcons/cart.png')}
-        renderingMode="template"
-      />
-    </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="cart">
+        <NativeTabs.Trigger.Label>Корзина</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require('@/assets/images/tabIcons/cart.png')}
+          renderingMode="template"
+        />
+        <NativeTabs.Trigger.Badge hidden={count === 0}>{String(count)}</NativeTabs.Trigger.Badge>
+      </NativeTabs.Trigger>
     </NativeTabs>
   );
 }

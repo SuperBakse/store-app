@@ -13,16 +13,6 @@ export default function RootLayout() {
             name="tabs"
             options={{ headerShown: false }}
           />
-
-          <Stack.Screen
-            name="checkout-success"
-            options={{ title: '', headerBackTitle: 'Назад' }}
-          />
-
-          <Stack.Screen
-            name="checkout-error"
-            options={{ title: '', headerBackTitle: 'Назад' }}
-          />
         </Stack>
 
         {/* Один bottom sheet на всё приложение; сам решает, показываться ли */}

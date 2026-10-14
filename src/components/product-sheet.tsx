@@ -74,7 +74,16 @@ type SheetBodyProps = {
 function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps) {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { addToCart } = useCart();
+  const { addItem } = useCart();
+
+  // Обратная связь после добавления: кнопка на секунду показывает «Добавлено»
+  const [added, setAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (addedTimer.current) clearTimeout(addedTimer.current);
+    };
+  }, []);
 
   // По умолчанию выбран первый размер (как в макете); для другого товара
   // sheet создаётся заново (key), поэтому выбор сбрасывается сам.
@@ -112,6 +121,16 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
     animateTo(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Добавляем в корзину именно выбранный размер; без размера кнопка неактивна
+  const canAdd = selectedSizeId !== null;
+  const handleAdd = () => {
+    if (selectedSizeId === null) return;
+    addItem(product.id, selectedSizeId);
+    setAdded(true);
+    if (addedTimer.current) clearTimeout(addedTimer.current);
+    addedTimer.current = setTimeout(() => setAdded(false), 1000);
+  };
 
   // Закрытие (крестик, затемнение, свайп): уезжает вниз и только потом размонтируется
   const close = () => animateTo(windowHeight, onClosed);
@@ -264,9 +283,23 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
             </ScrollView>
           )}
 
-          <Pressable style={styles.cartButton} onPress={() => addToCart(product.id, selectedSizeId)}>
+          <Pressable
+            style={[
+              styles.cartButton,
+              !canAdd && styles.cartButtonDisabled,
+              added && styles.cartButtonAdded,
+            ]}
+            onPress={handleAdd}
+            disabled={!canAdd}
+          >
             <Text style={styles.cartButtonText}>
-              {`В корзину · ${formatPrice(product.priceInKopecks)}`}
+              {!canAdd
+                ? product.sizes.length === 0
+                  ? 'Нет доступных размеров'
+                  : 'Выберите размер'
+                : added
+                  ? 'Добавлено ✓'
+                  : `В корзину · ${formatPrice(product.priceInKopecks)}`}
             </Text>
           </Pressable>
         </View>
@@ -394,6 +427,8 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     alignItems: 'center',
   },
+  cartButtonDisabled: { backgroundColor: '#C8C8C8' },
+  cartButtonAdded: { backgroundColor: '#2E9E5B' },
   cartButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 
   infoOverlay: {
