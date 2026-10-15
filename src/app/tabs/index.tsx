@@ -16,7 +16,7 @@ import { formatPrice } from '../../utils/format-price';
 export default function HomeScreen() {
   const {
     status,
-    errorMessage,
+    // errorMessage,
     reload,
     tabs,
     selectedTabId,
@@ -42,7 +42,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>Каталог товаров</Text>
         <View style={styles.center}>
           <Text style={styles.stateTitle}>Не удалось загрузить каталог</Text>
-          <Text style={styles.stateText}>{errorMessage}</Text>
+          {/* <Text style={styles.stateText}>{errorMessage}</Text> */}
           <TouchableOpacity style={styles.retryButton} onPress={reload}>
             <Text style={styles.retryButtonText}>Повторить</Text>
           </TouchableOpacity>
