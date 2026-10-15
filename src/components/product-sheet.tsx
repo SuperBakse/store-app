@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Image,
@@ -253,6 +253,8 @@ function SheetBody({ product, onClosed, infoOpen, setInfoOpen }: SheetBodyProps)
               </Pressable>
             </View>
 
+            <Text style={styles.price}>{formatPrice(product.priceInKopecks)}</Text>
+
             <Text style={styles.description}>{product.longDescription}</Text>
           </View>
         </ScrollView>
@@ -388,6 +390,7 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   name: { flex: 1, fontSize: 22, fontWeight: 'bold' },
+  price: { fontSize: 20, fontWeight: 'bold', color: ACCENT, marginTop: 8 },
   infoButton: {
     width: 28,
     height: 28,
